@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momo</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    <div class="container"></div>
+    <div class="topbar">
+        <div class="logo">
+            <img src="images/logo.png" alt="logo" class="logo-img" />
+            <h2>MTN Momo</h2>
+        </div>
+        <div class="search">
+            <input type="text" id="search" placeholder="Enter a keyword to search...">
+            <label for="search"> <i class="fas fa-search"></i></label>
+        </div>
+        <i class="fas fa-bell"></i>
+        <div class="user">
+            <img src="images/user.png" alt="">
+        </div>
+    </div>
+    <div class="sidebar">
+        <ul>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-house"></i>
+                    <div>Dashboard</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                    <div>Incoming Money</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-code"></i>
+                    <div>Payments to Code Holders</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                    <div>Transfers to Mobile Numbers</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <div>Bank Deposits</div>
+                </a>
+            </li>
+            
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-phone"></i>
+                    <div>Airtime Bill Payments</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-bolt"></i>
+                    <div>Cash Power Bill Payments</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-users-line"></i>
+                    <div>Third Party Transactions</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-user-tie"></i>
+                    <div>Withdraws from Agents</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-exchange-alt"></i>
+                    <div>Bank Transfers</div>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fa-solid fa-globe"></i>
+                    <div>Internet & Voice Bundles</div>
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="main">
+        <div class="cards">
+            <div class="card">
+                <div class="card-title">Total Transactions</div>
+                <div class="card-value">1500</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Total Amount</div>
+                <div class="card-value"><span class="card-currency">RWF</span>400,000</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Average Transactions</div>
+                <div class="card-value"><span class="card-currency">RWF</span>33,400</div>
+            </div>
+            </div>
+            <div class="charts-section">
+                <div class="chart">
+                <h2 class="chart-title">Transaction Analysis</h2>
+                <canvas id="myChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+    <script src="chart1.js"></script>
+ 
+    <script src="js/script.js"></script>
+</body>
+</html>
+

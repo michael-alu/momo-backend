@@ -125,13 +125,17 @@ body {
 }
 
 .sidebar ul li a:hover {
-    background: #066e97;
+    color: #0f0f0f;
+    background: #edeeee;
 }
 .sidebar ul li a.active {
     background: #066e97;
 }   
 .sidebar ul li a i {
-    color: #ffcc00;
+    color:  #ffcc00;
+}
+.sidebar ul li a:hover i {
+    color: #2da322;
 }
 
 .sidebar ul li a i {

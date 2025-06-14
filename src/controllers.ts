@@ -1,13 +1,27 @@
+// This file contains all the functions that handle our API requests
+// Each function is called a "controller" and handles a specific type of request
+
 import { Request, Response } from "express";
 import { Op, WhereOptions } from "sequelize";
 import { sequelize, Transaction } from "./models";
 import { paginate, respond, toFixed } from "./utilities";
 import { TransactionAttributes, TransactionQuery } from "./interfaces";
 
+/**
+ * Shows a welcome message when someone visits our API
+ */
 export const welcome = (req: Request, res: Response) => {
   return res.send("Welcome to our MoMo API! 🚀");
 };
 
+/**
+ * Gets a list of transactions with filtering and pagination
+ * You can filter by:
+ * - type (like "deposit" or "withdrawal")
+ * - amount range (min and max)
+ * - date range (start and end)
+ * - search text in the message
+ */
 export const getTransactions = async (req: Request, res: Response) => {
   try {
     const {
@@ -21,12 +35,15 @@ export const getTransactions = async (req: Request, res: Response) => {
       page = "1",
     } = req.query as TransactionQuery;
 
+    // Start building our database query
     const where: WhereOptions<TransactionAttributes> = {};
 
+    // Add filters if they were provided
     if (type) {
       where.transaction_type = type;
     }
 
+    // Handle amount range
     if (minAmount || maxAmount) {
       where.amount = {};
 
@@ -34,7 +51,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         const min = Number(minAmount);
 
         if (!isNaN(min)) {
-          where.amount = { ...where.amount, [Op.gte]: min };
+          where.amount = { ...where.amount, [Op.gte]: min }; // gte = greater than or equal
         }
       }
 
@@ -42,11 +59,12 @@ export const getTransactions = async (req: Request, res: Response) => {
         const max = Number(maxAmount);
 
         if (!isNaN(max)) {
-          where.amount = { ...where.amount, [Op.lte]: max };
+          where.amount = { ...where.amount, [Op.lte]: max }; // lte = less than or equal
         }
       }
     }
 
+    // Handle date range
     if (startDate || endDate) {
       where.sms_date = {};
 
@@ -69,21 +87,25 @@ export const getTransactions = async (req: Request, res: Response) => {
       }
     }
 
+    // Handle text search
     if (search) {
-      where.sms_body = { [Op.like]: `%${search}%` };
+      where.sms_body = { [Op.like]: `%${search}%` }; // % means match any text before/after
     }
 
+    // Calculate pagination
     const limit = parseInt(take, 10);
 
     const offset = (Number(page) - 1) * limit;
 
+    // Get total count for pagination
     const totalCount = await Transaction.count({ where });
 
+    // Get the actual transactions
     const transactions = await Transaction.findAll({
       where,
       limit,
       offset,
-      order: [["sms_date", "DESC"]],
+      order: [["sms_date", "DESC"]], // Show newest first
     });
 
     return respond(res, true, paginate(transactions, totalCount, take));
@@ -92,14 +114,20 @@ export const getTransactions = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Gets a single transaction by its ID
+ */
 export const getTransaction = async (req: Request, res: Response) => {
   try {
+    // Check if ID was provided
     if (!req.params.id) {
       return respond(res, false, undefined, "Please provide a Transaction ID");
     }
 
+    // Find the transaction
     const transaction = await Transaction.findByPk(Number(req.params.id));
 
+    // Check if it exists
     if (!transaction) {
       return respond(
         res,
@@ -115,24 +143,32 @@ export const getTransaction = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Gets statistics about transactions
+ * You can filter by transaction type
+ * Returns:
+ * - total number of transactions
+ * - total amount of money
+ * - average amount per transaction
+ */
 export const getStatistics = async (req: Request, res: Response) => {
   try {
     const { type } = req.query as { type?: string };
 
-    // Create where clause if type is provided
+    // Add type filter if provided
     const where: WhereOptions<TransactionAttributes> = {};
 
     if (type) {
       where.transaction_type = type;
     }
 
-    // Get total count of transactions
+    // Count total transactions
     const totalCount = await Transaction.count({ where });
 
-    // Get sum of all amounts
+    // Sum up all amounts
     const totalAmount = (await Transaction.sum("amount", { where })) || 0;
 
-    // Calculate average amount
+    // Calculate average
     let averageAmount = 0;
 
     if (totalCount > 0) {
@@ -149,6 +185,15 @@ export const getStatistics = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Gets transaction data for charts
+ * You can:
+ * - Filter by transaction type
+ * - Choose how many days to look back
+ * Returns daily totals for:
+ * - Money moved around (if type is specified)
+ * - Money going in and out (if no type specified)
+ */
 export const getAnalysis = async (req: Request, res: Response) => {
   try {
     const { type, days = "30" } = req.query as { type?: string; days?: string };
@@ -159,7 +204,7 @@ export const getAnalysis = async (req: Request, res: Response) => {
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - numberOfDays);
 
-    // Helper function to generate array of dates
+    // Helper to create array of dates
     const generateDateArray = () => {
       const dates = [];
       const currentDate = new Date(startDate);
@@ -170,7 +215,7 @@ export const getAnalysis = async (req: Request, res: Response) => {
       return dates;
     };
 
-    // Helper function to fill missing dates with zero amounts
+    // Helper to fill in missing dates with zero amounts
     const fillMissingDates = (data: any[]) => {
       const dateMap = new Map(data.map(item => [item.date, item.amount]));
       return generateDateArray().map(date => ({
@@ -179,7 +224,7 @@ export const getAnalysis = async (req: Request, res: Response) => {
       }));
     };
 
-    // If type is provided, just get data for that type
+    // If type is specified, get data for just that type
     if (type) {
       const data = await Transaction.findAll({
         attributes: [
@@ -203,7 +248,7 @@ export const getAnalysis = async (req: Request, res: Response) => {
       });
     }
 
-    // If no type, get money in and money out separately
+    // If no type specified, get both incoming and outgoing money
     // Money coming in
     const incomingData = await Transaction.findAll({
       attributes: [

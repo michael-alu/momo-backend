@@ -1,11 +1,15 @@
 import { Optional } from "sequelize/types";
 
+// This file defines the shapes of our data (like blueprints for our data)
+
+// This interface helps us handle pagination (showing data page by page)
 export interface PaginationResult<T> {
-  totalCount: number;
-  totalPages: number;
-  list: T[];
+  totalCount: number; // Total number of items
+  totalPages: number; // Total number of pages
+  list: T[]; // The actual items for the current page
 }
 
+// This interface defines what query parameters we can use when searching transactions
 export interface TransactionQuery {
   type?: string;
   minAmount?: string;
@@ -17,6 +21,7 @@ export interface TransactionQuery {
   page?: string;
 }
 
+// This interface defines what a transaction looks like in our database
 export interface TransactionAttributes {
   id: number;
   sms_address: string;
@@ -38,5 +43,6 @@ export interface TransactionAttributes {
   raw_json: any;
 }
 
+// This interface is used when creating a new transaction, it's the same as TransactionAttributes but the ID is optional because the database will generate it for us
 export interface CreateTransactionInput
   extends Optional<TransactionAttributes, "id"> {}

@@ -1,10 +1,18 @@
+// This is the main file that starts our application
+// It sets up the database and starts the server
+
 import app from "./app";
 import { config } from "./config";
 import { sequelize, Transaction } from "./models";
 import processSMS from "./process_sms";
 
+/**
+ * Makes sure our database has data to work with
+ * If the database is empty, it processes SMS data to populate it
+ */
 const populateDB = async () => {
   try {
+    // Connect to the database
     sequelize
       .sync()
       .then(() =>
@@ -23,7 +31,7 @@ const populateDB = async () => {
         "\nNo transactions found in database. Processing SMS data...\n"
       );
 
-      // Process SMS data
+      // If no transactions, process SMS data to create them
       await processSMS();
 
       return console.log(
@@ -32,6 +40,7 @@ const populateDB = async () => {
       );
     }
 
+    // If we already have transactions, just show how many
     return console.log(
       "\x1b[33m%s\x1b[0m",
       `\nDatabase already contains ${transactionCount} transactions.\n`
@@ -43,9 +52,13 @@ const populateDB = async () => {
   }
 };
 
+/**
+ * Starts our application
+ * First makes sure the database is ready, then starts the server
+ */
 const start = async () => {
   try {
-    // Check if Database is populated and populate if not
+    // Make sure database is ready
     await populateDB();
 
     // Start the server
@@ -62,4 +75,5 @@ const start = async () => {
   }
 };
 
+// Start the application
 start();

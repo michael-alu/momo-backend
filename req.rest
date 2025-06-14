@@ -7,3 +7,11 @@ GET http://localhost:4000/transactions?type=Incoming Money&minAmount=3000&page=2
 ###
 
 GET http://localhost:4000/transactions/725
+
+###
+
+GET http://localhost:4000/statistics?type=Incoming Money
+
+###
+
+GET http://localhost:4000/analysis?type=Incoming Money

@@ -146,7 +146,7 @@ The main code is in the `src` folder:
 
 ## Notes
 
-- The database is SQLite, so it's just a file (`momo.sqlite`)
+- The database is SQLite, so it's just a file (`momo.db`)
 - All dates are in UTC
 - Amounts are in RWF (Rwandan Francs)
 - The system processes SMS messages in batches of 50

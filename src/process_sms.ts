@@ -1,20 +1,28 @@
+// This file handles processing SMS messages and storing them in our database
+// It's the most complex code here, so take your time to understand
+// It reads SMS data from an XML file and converts it into transactions
+
 import fs, { writeFileSync } from "fs";
 import path from "path";
 import xml2js from "xml2js";
 import { sequelize, Transaction } from "./models";
 import winston from "winston";
 
+// Where to find our SMS data
 const xmlFile = path.join(__dirname, "../data/modified_sms_v2.xml");
 
+// Where to log any messages we couldn't process
 const logFile = path.join(__dirname, "../logs/unprocessed.log");
 
+// How many messages to process at once
 const BATCH_SIZE = 50;
 
-// Logger for unprocessed messages
+// Set up logging for messages we can't process
 const logger = winston.createLogger({
   transports: [new winston.transports.File({ filename: logFile })],
 });
 
+// What an SMS message looks like
 interface SMS {
   address: string;
   body: string;
@@ -24,12 +32,13 @@ interface SMS {
   [key: string]: any;
 }
 
+// Helper interface for sender/receiver info
 interface SenderReceiver {
   sender: string | null;
   receiver: string | null;
 }
 
-// Extracts amount from inputs like '2,000 RWF'
+// Helper function to get the amount from text like '2,000 RWF'
 const extractAmount = (input?: string): number | null => {
   if (!input) {
     return null;
@@ -44,7 +53,7 @@ const extractAmount = (input?: string): number | null => {
   return parseInt(match[1], 10);
 };
 
-// Extracts date from inputs like '2024-05-10 16:30:51'
+// Helper function to get date from text like '2024-05-10 16:30:51'
 const extractDate = (input?: string): Date | null => {
   if (!input) {
     return null;
@@ -59,12 +68,13 @@ const extractDate = (input?: string): Date | null => {
   return new Date(match[0]);
 };
 
-// Categorize SMS by body content
+// Figure out what kind of transaction this is based on the message
 const categorizeSMS = (body?: string): string => {
   if (!body) {
     return "Unknown";
   }
 
+  // Check message content to determine transaction type
   if (/received/.test(body) && /from/.test(body)) {
     return "Incoming Money";
   }
@@ -108,7 +118,7 @@ const categorizeSMS = (body?: string): string => {
   return "Other";
 };
 
-// Parse sender/receiver from body
+// Get sender and receiver info from the message
 const extractSenderReceiver = (body: string, type: string): SenderReceiver => {
   let sender: string | null = null;
 
@@ -129,26 +139,30 @@ const extractSenderReceiver = (body: string, type: string): SenderReceiver => {
   return { sender, receiver };
 };
 
+// Main function that processes all SMS messages
 export default async function main(): Promise<void> {
   try {
+    // Make sure database is ready
     await sequelize.sync();
 
+    // Read the XML file
     const xml = fs.readFileSync(xmlFile, "utf8");
 
+    // Parse XML into JavaScript objects
     const parser = new xml2js.Parser({ explicitArray: false });
 
     const result = await parser.parseStringPromise(xml);
 
     const messages: { $: SMS }[] = result.smses.sms;
 
-    let count = 0;
+    let count = 0; // How many messages we processed
+    let ignored = 0; // How many messages we couldn't process
 
-    let ignored = 0;
-
-    // Process messages in batches
+    // Process messages in small batches to make it faster
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
       const batch = messages.slice(i, i + BATCH_SIZE);
 
+      // Process each message in the batch
       const batchPromises = batch.map(async message => {
         const sms = message.$;
 
@@ -163,21 +177,21 @@ export default async function main(): Promise<void> {
             extractDate(body) ||
             (sms.readable_date ? new Date(sms.readable_date) : new Date());
 
-          // Extract fee
+          // Get transaction fee
           const feeMatch = body.match(/Fee (?:was|paid):?\s*([\d,]+) RWF/);
 
           const fee = feeMatch
             ? parseInt(feeMatch[1].replace(/,/g, ""), 10)
             : 0;
 
-          // Extract balance
+          // Get account balance
           const balanceMatch = body.match(/balance:?\s*([\d,]+) RWF/i);
 
           const balance = balanceMatch
             ? parseInt(balanceMatch[1].replace(/,/g, ""), 10)
             : null;
 
-          // Extract transaction IDs
+          // Get transaction IDs
           const transactionIdMatch =
             body.match(/Transaction Id:?\s*(\d+)/i) ||
             body.match(/TxId:?\s*(\d+)/i);
@@ -194,13 +208,13 @@ export default async function main(): Promise<void> {
             ? externalIdMatch[1]
             : null;
 
-          // Extract sender/receiver
+          // Get sender/receiver info
           const { sender, receiver } = extractSenderReceiver(
             body,
             transaction_type
           );
 
-          // Create transaction
+          // Save transaction to database
           const transaction = await Transaction.create({
             sms_address: sms.address || "",
             sms_date,
@@ -233,10 +247,10 @@ export default async function main(): Promise<void> {
         }
       });
 
-      // Wait for all promises in the batch to complete
+      // Wait for all messages in this batch to finish
       const results = await Promise.all(batchPromises);
 
-      // Update counters
+      // Count successes and failures
       results.forEach(result => {
         if (result.success) {
           count++;
@@ -245,7 +259,7 @@ export default async function main(): Promise<void> {
         }
       });
 
-      // Log progress
+      // Show progress
       console.log(
         `\n\nProcessed ${i + batch.length} of ${
           messages.length
@@ -253,11 +267,12 @@ export default async function main(): Promise<void> {
       );
     }
 
+    // Show final results
     console.log(
       `\n\nSMS Processing complete. Processed: ${count}, Ignored: ${ignored}\n\n`
     );
 
-    // Write final stats to a log file
+    // Save processing statistics to a file
     writeFileSync(
       path.join(__dirname, "../logs/processing-stats.json"),
       JSON.stringify(

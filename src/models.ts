@@ -1,14 +1,20 @@
+// This file sets up our database connection and defines our database tables
+
 import path from "path";
 import { Sequelize, DataTypes, Model } from "sequelize";
 import { config } from "./config";
 import { TransactionAttributes, CreateTransactionInput } from "./interfaces";
 
+// Create a connection to our SQLite database
+// SQLite is a simple file-based database, perfect for learning
 export const sequelize = new Sequelize({
   dialect: "sqlite",
   logging: config.isDevelopment,
   storage: path.join(__dirname, "../momo.sqlite"),
 });
 
+// This class represents our Transaction table in the database
+// It tells Sequelize (our database helper) what our table looks like
 export class Transaction
   extends Model<TransactionAttributes, CreateTransactionInput>
   implements TransactionAttributes
@@ -33,6 +39,7 @@ export class Transaction
   public raw_json!: any;
 }
 
+// This sets up the actual table in the database
 Transaction.init(
   {
     id: {

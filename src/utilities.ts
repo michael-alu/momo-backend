@@ -28,13 +28,6 @@ export function respond(
     .send({ message, data, ok: statusCode >= 200 || statusCode < 300 });
 }
 
-/**
- * This is a function that paginates data.
- * @param array The data to paginate
- * @param page The current page to view
- * @param take The number of items per page
- */
-
 export function paginate<T>(
   list: T[],
   totalCount: number,
@@ -46,3 +39,15 @@ export function paginate<T>(
     totalPages: Math.ceil(totalCount / Number(take || "10")),
   };
 }
+
+export const toFixed = (input: number | string) => {
+  if (isNaN(input as number)) {
+    throw new Error("Number cannot be converted");
+  }
+
+  if (typeof input === "string") {
+    input = Number(input);
+  }
+
+  return Number(input.toFixed(2));
+};

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { Op, QueryTypes, WhereOptions } from "sequelize";
+import { Op, WhereOptions } from "sequelize";
 import { sequelize, Transaction } from "./models";
-import { paginate, respond } from "./utilities";
+import { paginate, respond, toFixed } from "./utilities";
 import { TransactionAttributes, TransactionQuery } from "./interfaces";
 
 export const welcome = (req: Request, res: Response) => {
@@ -115,36 +115,148 @@ export const getTransaction = async (req: Request, res: Response) => {
   }
 };
 
-export const getSummaryByType = async (req: Request, res: Response) => {
+export const getStatistics = async (req: Request, res: Response) => {
   try {
-    const transactions = await Transaction.findAll({
-      attributes: [
-        "transaction_type",
-        [sequelize.fn("SUM", sequelize.col("amount")), "total"],
-      ],
-      group: ["transaction_type"],
-      order: [[sequelize.fn("SUM", sequelize.col("amount")), "DESC"]],
-    });
+    const { type } = req.query as { type?: string };
 
-    return respond(res, true, transactions);
+    // Create where clause if type is provided
+    const where: WhereOptions<TransactionAttributes> = {};
+
+    if (type) {
+      where.transaction_type = type;
+    }
+
+    // Get total count of transactions
+    const totalCount = await Transaction.count({ where });
+
+    // Get sum of all amounts
+    const totalAmount = (await Transaction.sum("amount", { where })) || 0;
+
+    // Calculate average amount
+    let averageAmount = 0;
+
+    if (totalCount > 0) {
+      averageAmount = toFixed(totalAmount / totalCount);
+    }
+
+    return respond(res, true, {
+      totalCount,
+      totalAmount,
+      averageAmount,
+    });
   } catch (error: any) {
     return respond(res, 500, error, error?.message || "Internal Server Error");
   }
 };
 
-export const getMonthlySummary = async (req: Request, res: Response) => {
+export const getAnalysis = async (req: Request, res: Response) => {
   try {
-    const summary = await sequelize.query(
-      `
-          SELECT strftime('%Y-%m', sms_date) as month, transaction_type, SUM(amount) as total
-          FROM Transactions
-          GROUP BY month, transaction_type
-          ORDER BY month DESC, transaction_type
-        `,
-      { type: QueryTypes.SELECT }
-    );
+    const { type, days = "30" } = req.query as { type?: string; days?: string };
+    const numberOfDays = parseInt(days, 10) || 30;
 
-    return respond(res, true, summary);
+    // Calculate start date based on last known transaction (Jan 15, 2025)
+    const endDate = new Date("2025-01-15");
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - numberOfDays);
+
+    // Helper function to generate array of dates
+    const generateDateArray = () => {
+      const dates = [];
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        dates.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return dates;
+    };
+
+    // Helper function to fill missing dates with zero amounts
+    const fillMissingDates = (data: any[]) => {
+      const dateMap = new Map(data.map(item => [item.date, item.amount]));
+      return generateDateArray().map(date => ({
+        date: date.toISOString().split("T")[0],
+        amount: dateMap.get(date.toISOString().split("T")[0]) || 0,
+      }));
+    };
+
+    // If type is provided, just get data for that type
+    if (type) {
+      const data = await Transaction.findAll({
+        attributes: [
+          [sequelize.fn("DATE", sequelize.col("sms_date")), "date"],
+          [sequelize.fn("SUM", sequelize.col("amount")), "amount"],
+        ],
+        where: {
+          transaction_type: type,
+          sms_date: {
+            [Op.between]: [startDate, endDate],
+          },
+        },
+        group: [sequelize.fn("DATE", sequelize.col("sms_date"))],
+        order: [[sequelize.fn("DATE", sequelize.col("sms_date")), "ASC"]],
+        raw: true,
+      });
+
+      return respond(res, true, {
+        type: type,
+        data: fillMissingDates(data),
+      });
+    }
+
+    // If no type, get money in and money out separately
+    // Money coming in
+    const incomingData = await Transaction.findAll({
+      attributes: [
+        [sequelize.fn("DATE", sequelize.col("sms_date")), "date"],
+        [sequelize.fn("SUM", sequelize.col("amount")), "amount"],
+      ],
+      where: {
+        transaction_type: {
+          [Op.in]: ["Incoming Money", "Bank Transfers"],
+        },
+        sms_date: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+      group: [sequelize.fn("DATE", sequelize.col("sms_date"))],
+      order: [[sequelize.fn("DATE", sequelize.col("sms_date")), "ASC"]],
+      raw: true,
+    });
+
+    // Money going out
+    const outgoingData = await Transaction.findAll({
+      attributes: [
+        [sequelize.fn("DATE", sequelize.col("sms_date")), "date"],
+        [sequelize.fn("SUM", sequelize.col("amount")), "amount"],
+      ],
+      where: {
+        transaction_type: {
+          [Op.in]: [
+            "Payments to Code Holders",
+            "Transfers to Mobile Numbers",
+            "Bank Deposits",
+            "Airtime Bill Payments",
+            "Cash Power Bill Payments",
+            "Withdrawals from Agents",
+            "Internet and Voice Bundle Purchases",
+          ],
+        },
+        sms_date: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+      group: [sequelize.fn("DATE", sequelize.col("sms_date"))],
+      order: [[sequelize.fn("DATE", sequelize.col("sms_date")), "ASC"]],
+      raw: true,
+    });
+
+    return respond(res, true, {
+      type: null,
+      data: {
+        incoming: fillMissingDates(incomingData),
+        outgoing: fillMissingDates(outgoingData),
+      },
+    });
   } catch (error: any) {
     return respond(res, 500, error, error?.message || "Internal Server Error");
   }

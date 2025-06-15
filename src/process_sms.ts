@@ -38,6 +38,16 @@ interface SenderReceiver {
   receiver: string | null;
 }
 
+// Check if a message is an OTP message
+const isOTPMessage = (body: string): boolean => {
+  // Look for OTP message patterns
+  return (
+    body.includes("one-time password") &&
+    body.includes("MTN MoMo") &&
+    /^\d{4}$/.test(body.match(/\d{4}/)?.[0] || "") // Check if there's a 4-digit number
+  );
+};
+
 // Helper function to get the amount from text like '2,000 RWF'
 const extractAmount = (input?: string): number | null => {
   if (!input) {
@@ -156,7 +166,7 @@ export default async function main(): Promise<void> {
     const messages: { $: SMS }[] = result.smses.sms;
 
     let count = 0; // How many messages we processed
-    let ignored = 0; // How many messages we couldn't process
+    let ignored = 0; // How many messages we couldn't process (including OTP messages)
 
     // Process messages in small batches to make it faster
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
@@ -168,6 +178,16 @@ export default async function main(): Promise<void> {
 
         try {
           const body = sms.body || "No Body provided";
+
+          // Skip OTP messages
+          if (isOTPMessage(body)) {
+            logger.info({
+              sms,
+              reason: "OTP message",
+              type: "ignored",
+            });
+            return { success: false };
+          }
 
           const transaction_type = categorizeSMS(body);
 

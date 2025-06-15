@@ -10,7 +10,7 @@ import { TransactionAttributes, CreateTransactionInput } from "./interfaces";
 export const sequelize = new Sequelize({
   dialect: "sqlite",
   logging: config.isDevelopment,
-  storage: path.join(__dirname, "../momo.sqlite"),
+  storage: path.join(__dirname, "../momo.db"),
 });
 
 // This class represents our Transaction table in the database

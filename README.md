@@ -2,6 +2,9 @@
 
 This is a backend API that processes and analyzes Mobile Money (MoMo) transaction data from SMS messages. It helps track and understand your mobile money transactions by providing statistics and analysis.
 
+## Walkthrough Video
+- https://www.loom.com/share/eef471ec8f6a454c82188f0fd62893c7?sid=c70c3fe2-c392-4b3d-87b5-26acec455ab2
+
 ## What This Project Does
 
 - Takes SMS messages about MoMo transactions and stores them in a database
